@@ -7,17 +7,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
             --bg-color: #f8fafc; --text-color: #111827; --card-bg: white;
             --header-bg: rgba(255, 255, 255, 0.8); --subtle-text: #4b5563;
             --border-color: #e5e7eb; --accent-color: #4f46e5;
+            --constellation-color: 'rgba(75, 85, 99, 0.8)';
         }
         html.dark {
             --bg-color: #0f172a; --text-color: #f8fafc; --card-bg: #1e293b;
             --header-bg: rgba(15, 23, 42, 0.8); --subtle-text: #94a3b8;
             --border-color: #334152; --accent-color: #818cf8;
+            --constellation-color: 'rgba(156, 163, 175, 0.6)';
         }
         body {
             font-family: 'Inter', sans-serif; background-color: var(--bg-color);
@@ -37,7 +38,7 @@
         .hover\:bg-accent-dark:hover { background-color: #4338ca; }
         html.dark .hover\:bg-accent-dark:hover { background-color: #6366f1; }
 
-        #webgl-canvas { position: fixed; top: 0; left: 0; z-index: -1; }
+        #constellation-canvas { position: fixed; top: 0; left: 0; z-index: -1; }
         .content-wrapper { position: relative; z-index: 1; }
         
         #loader {
@@ -61,16 +62,34 @@
             border: 1px solid var(--border-color); border-radius: 0.5rem;
             padding: 1rem;
         }
-        #game-board {
+        #game-board, #tetris-board {
             display: grid;
-            grid-template-columns: repeat(20, 1fr);
-            grid-template-rows: repeat(20, 1fr);
-            width: 100%;
-            aspect-ratio: 1/1;
             background-color: var(--border-color);
             border-radius: 0.25rem;
             gap: 1px;
         }
+        #game-board {
+            grid-template-columns: repeat(20, 1fr);
+            grid-template-rows: repeat(20, 1fr);
+            width: 100%;
+            aspect-ratio: 1/1;
+        }
+        #tetris-board {
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(20, 1fr);
+            width: 100%;
+            aspect-ratio: 1/2;
+            position: relative;
+        }
+        .tetris-cell { background-color: var(--card-bg); }
+        .tetris-cell.I { background-color: #3b82f6; } /* blue */
+        .tetris-cell.O { background-color: #facc15; } /* yellow */
+        .tetris-cell.T { background-color: #a855f7; } /* purple */
+        .tetris-cell.L { background-color: #f97316; } /* orange */
+        .tetris-cell.J { background-color: #ec4899; } /* pink */
+        .tetris-cell.S { background-color: #4ade80; } /* green */
+        .tetris-cell.Z { background-color: #ef4444; } /* red */
+
         .snake-segment { background-color: #4ade80; }
         .food { background-color: #f87171; border-radius: 50%; }
         
@@ -121,6 +140,39 @@
         
         #matrix-canvas-container { position: relative; z-index: 1; border-radius: 0.75rem; overflow:hidden; }
         #matrix-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; opacity: 0.2; }
+        
+        /* New Interactive Styles */
+        .reveal-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .reveal-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .skill { position: relative; }
+        .skill-tooltip {
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        .skill:hover .skill-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -131,12 +183,12 @@
         <p class="text-xs text-slate-400">P.S. This is just for fun :)</p>
     </div>
 
-    <canvas id="webgl-canvas"></canvas>
+    <canvas id="constellation-canvas"></canvas>
     
     <div class="content-wrapper">
         <header class="shadow-sm sticky top-0 z-50 border-b border-default">
             <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
-                <a href="#" class="text-2xl font-bold">Banishwor Athokpam</a>
+                <a href="#" class="text-2xl font-bold">Banishwor A.</a>
                 <div class="hidden md:flex space-x-6 items-center">
                     <a href="#about" class="text-subtle hover:text-accent">About</a>
                     <a href="#projects" class="text-subtle hover:text-accent">Projects</a>
@@ -172,11 +224,29 @@
                 <p class="mt-4 text-lg md:text-xl text-subtle">MCA graduate with a passion for software development, testing, and creating innovative solutions.</p>
             </div>
         </main>
+        
+        <section id="matrix-terminal-section" class="py-16 md:py-24">
+            <div class="container mx-auto px-6">
+                 <div id="matrix-canvas-container" class="card max-w-2xl mx-auto">
+                    <canvas id="matrix-canvas"></canvas>
+                    <div class="terminal-window bg-transparent border-none shadow-none">
+                        <div class="terminal-header bg-card-bg/50">
+                            <div class="terminal-dot bg-red-500"></div>
+                            <div class="terminal-dot bg-yellow-500"></div>
+                            <div class="terminal-dot bg-green-500"></div>
+                        </div>
+                        <div class="terminal-body" id="terminal-body">
+                            <span id="terminal-text"></span><span class="cursor"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <section id="projects" class="py-16 md:py-24">
             <div class="container mx-auto px-6">
                 <h2 class="text-3xl font-bold text-center mb-12">My Projects & Publications</h2>
-                <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div class="card">
                         <div class="p-6">
                             <div class="flex items-center space-x-4 mb-4">
@@ -191,7 +261,7 @@
                         <div class="p-6">
                             <div class="flex items-center space-x-4 mb-4">
                                 <div class="bg-green-100 p-3 rounded-full"><i data-feather="book-open" class="text-green-600"></i></div>
-                                <h3 class="text-xl font-bold">Yek Salai Ancestor Finder</h3>
+                                <h3 class="text-xl font-bold">Yek Salai Blog</h3>
                             </div>
                             <p class="text-subtle mb-4">A detailed blog post explaining the concept and implementation of the Yek Salai project.</p>
                             <a href="https://baniat.blogspot.com/2017/01/yek-salai-common-ancestor-finder.html" target="_blank" class="font-semibold text-green-600 dark:text-green-400">Read Blog Post &rarr;</a>
@@ -207,6 +277,15 @@
                             <a href="https://www.amazon.in/dp/B0FM2VW1YZ/" target="_blank" class="font-semibold text-yellow-600 dark:text-yellow-400">View on Amazon &rarr;</a>
                         </div>
                     </div>
+                    <div class="card">
+                        <div class="p-6">
+                             <div class="flex items-center space-x-4 mb-4">
+                                <div class="bg-red-100 p-3 rounded-full"><i data-feather="file-text" class="text-red-600"></i></div>
+                                <h3 class="text-xl font-bold">MCA Research</h3>
+                            </div>
+                            <p class="text-subtle mb-4">Empirical study on clustering-based missing data imputation techniques for my MCA degree.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -214,36 +293,35 @@
         <section id="playground" class="py-16 md:py-24">
             <div class="container mx-auto px-6">
                 <h2 class="text-3xl font-bold text-center mb-12">My Digital Playground</h2>
-                <div class="grid lg:grid-cols-2 gap-12">
+                <div class="flex flex-col items-center gap-12">
                     
-                    <div class="space-y-12">
-                        <div>
-                            <h3 class="text-2xl font-bold mb-4">Ad Showcase</h3>
-                            <div class="max-w-sm mx-auto">
-                                <div class="tv-screen-container">
-                                    <div class="tv-screen" id="tv-screen"></div>
-                                </div>
-                                <div class="tv-stand"></div>
-                                <p class="text-center text-xs text-subtle mt-4">P.S. Try the Konami Code!</p>
+                    <!-- Row 1: Ad Showcase -->
+                    <div class="w-full max-w-sm">
+                        <h3 class="text-2xl font-bold mb-4 text-center">Ad Showcase</h3>
+                        <div class="mx-auto">
+                            <div class="tv-screen-container">
+                                <div class="tv-screen" id="tv-screen"></div>
                             </div>
+                            <div class="tv-stand"></div>
+                            <p class="text-center text-xs text-subtle mt-4">P.S. Try the Konami Code!</p>
                         </div>
-                        
+                    </div>
+
+                    <!-- Row 2: Snake and Code Battle -->
+                    <div class="w-full grid lg:grid-cols-2 gap-12">
                         <div>
-                            <h3 class="text-2xl font-bold mb-4">Pixel-Art Snake</h3>
+                            <h3 class="text-2xl font-bold mb-4 text-center lg:text-left">Pixel-Art Snake</h3>
                             <div class="card p-4">
                                 <div class="flex justify-between items-center mb-4">
-                                    <div>Score: <span id="score">0</span></div>
-                                    <button id="start-game" class="bg-green-500 text-white px-4 py-1 rounded-md hover:bg-green-600 transition">Start</button>
+                                    <div>Score: <span id="snake-score">0</span></div>
+                                    <button id="start-snake" class="bg-green-500 text-white px-4 py-1 rounded-md hover:bg-green-600 transition">Start</button>
                                 </div>
                                 <div id="game-board"></div>
                                 <p class="text-xs text-subtle mt-4 text-center">Use Arrow Keys to move.</p>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="space-y-12">
-                         <div>
-                            <h3 class="text-2xl font-bold mb-4">Code Battle Arena</h3>
+                        <div>
+                            <h3 class="text-2xl font-bold mb-4 text-center lg:text-left">Code Battle Arena</h3>
                             <div class="card p-6">
                                 <p class="font-semibold mb-2">Challenge: The `sum` Function</p>
                                 <p class="text-subtle mb-4">Write a JS function that takes an array of numbers and returns their total.</p>
@@ -254,24 +332,21 @@
                                 <pre id="code-output" class="mt-4 p-4 bg-gray-100 dark:bg-slate-900 rounded-md text-sm whitespace-pre-wrap"></pre>
                             </div>
                         </div>
-                        
-                        <div>
-                            <h3 class="text-2xl font-bold mb-4">Matrix Terminal</h3>
-                            <div id="matrix-canvas-container" class="card">
-                                <canvas id="matrix-canvas"></canvas>
-                                <div class="terminal-window bg-transparent border-none shadow-none">
-                                    <div class="terminal-header bg-card-bg/50">
-                                        <div class="terminal-dot bg-red-500"></div>
-                                        <div class="terminal-dot bg-yellow-500"></div>
-                                        <div class="terminal-dot bg-green-500"></div>
-                                    </div>
-                                    <div class="terminal-body" id="terminal-body">
-                                        <span id="terminal-text"></span><span class="cursor"></span>
-                                    </div>
-                                </div>
+                    </div>
+
+                    <!-- Row 3: Tetris -->
+                    <div class="w-full max-w-md">
+                        <h3 class="text-2xl font-bold mb-4 text-center">Block Fall (Tetris)</h3>
+                        <div class="card p-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <div>Score: <span id="tetris-score">0</span></div>
+                                <button id="start-tetris" class="bg-blue-500 text-white px-4 py-1 rounded-md hover:bg-blue-600 transition">Start</button>
                             </div>
+                            <div id="tetris-board"></div>
+                            <p class="text-xs text-subtle mt-4 text-center">Arrows: Move/Rotate, Down: Speed Up</p>
                         </div>
                     </div>
+
                 </div>
             </div>
         </section>
@@ -281,18 +356,23 @@
                 <div class="grid lg:grid-cols-2 gap-12 items-center">
                     <div>
                         <h2 class="text-3xl font-bold mb-4">About Me</h2>
-                        <p class="text-subtle mb-6">
-                            I am a detail-oriented Master of Computer Applications graduate from Manipur University. With hands-on experience in software maintenance, testing, and education, I possess strong communication, teamwork, and technical skills. I thrive in dynamic environments and am always eager to learn and apply new technologies to solve real-world problems.
+                        <p class="text-subtle mb-6 reveal-on-scroll">
+                            I am a detail-oriented Master of Computer Applications graduate from Manipur University. With hands-on experience in software maintenance, testing, and education, I possess strong communication, teamwork, and technical skills.
+                        </p>
+                         <p class="text-subtle mb-6 reveal-on-scroll">
+                           I thrive in dynamic environments and am always eager to learn and apply new technologies to solve real-world problems.
                         </p>
                     </div>
                     <div id="skills-section">
                         <h3 class="text-2xl font-bold mb-6">Technical Skills</h3>
                         <div class="space-y-5">
                             <div class="skill" data-level="90">
+                                <div class="skill-tooltip">Manual & automated testing, debugging, and version control.</div>
                                 <div class="flex justify-between mb-1"><span class="font-medium">Software Testing & Maintenance</span><span class="text-sm text-subtle">90%</span></div>
                                 <div class="skill-bar-container"><div class="skill-bar" style="width: 0%;"></div></div>
                             </div>
                             <div class="skill" data-level="85">
+                                <div class="skill-tooltip">Interactive front-end experiences with HTML, CSS, and modern JS.</div>
                                 <div class="flex justify-between mb-1"><span class="font-medium">JavaScript & Web Tech</span><span class="text-sm text-subtle">85%</span></div>
                                 <div class="skill-bar-container"><div class="skill-bar" style="width: 0%;"></div></div>
                             </div>
@@ -315,7 +395,6 @@
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         // --- All JS from previous version is maintained here ---
-        // Fake Loading, Theme Toggle, WebGL, Code Battle, Snake, Skills...
         
         // --- Fake Loading Screen ---
         const loader = document.getElementById('loader');
@@ -368,52 +447,83 @@
             });
         });
 
-        // --- WebGL Particle System ---
-        let scene, camera, renderer, particles;
-        let mouseX = 0, mouseY = 0;
-        const windowHalfX = window.innerWidth / 2;
-        const windowHalfY = window.innerHeight / 2;
+        // --- Constellation Background ---
+        const constellationCanvas = document.getElementById('constellation-canvas');
+        const constellationCtx = constellationCanvas.getContext('2d');
+        let particlesArray;
 
-        function initWebGL() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
-            camera.position.z = 1000;
+        function getParticleColor() {
+            const styles = getComputedStyle(document.documentElement);
+            return styles.getPropertyValue('--constellation-color').trim().replace(/'/g, '');
+        }
 
-            const material = new THREE.PointsMaterial({ color: 0x818cf8, size: 2, transparent: true, opacity: 0.7 });
-            const geometry = new THREE.BufferGeometry();
-            const vertices = [];
-            for (let i = 0; i < 10000; i++) {
-                const x = Math.random() * 2000 - 1000;
-                const y = Math.random() * 2000 - 1000;
-                const z = Math.random() * 2000 - 1000;
-                vertices.push(x, y, z);
+        class Particle {
+            constructor(x, y, directionX, directionY, size, color) {
+                this.x = x; this.y = y; this.directionX = directionX; this.directionY = directionY; this.size = size; this.color = color;
             }
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            particles = new THREE.Points(geometry, material);
-            scene.add(particles);
-
-            renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas'), alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-
-            document.addEventListener('mousemove', (e) => { mouseX = e.clientX - windowHalfX; mouseY = e.clientY - windowHalfY; });
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
-            });
+            draw() {
+                constellationCtx.beginPath();
+                constellationCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
+                constellationCtx.fillStyle = this.color;
+                constellationCtx.fill();
+            }
+            update() {
+                if (this.x > constellationCanvas.width || this.x < 0) this.directionX = -this.directionX;
+                if (this.y > constellationCanvas.height || this.y < 0) this.directionY = -this.directionY;
+                this.x += this.directionX; this.y += this.directionY; this.draw();
+            }
         }
 
-        function animateWebGL() {
-            requestAnimationFrame(animateWebGL);
-            camera.position.x += (mouseX - camera.position.x) * 0.05;
-            camera.position.y += (-mouseY - camera.position.y) * 0.05;
-            camera.lookAt(scene.position);
-            renderer.render(scene, camera);
+        function initConstellation() {
+            constellationCanvas.width = window.innerWidth;
+            constellationCanvas.height = window.innerHeight;
+            particlesArray = [];
+            let numberOfParticles = (constellationCanvas.height * constellationCanvas.width) / 9000;
+            let color = getParticleColor();
+            for (let i = 0; i < numberOfParticles; i++) {
+                let size = (Math.random() * 2) + 1;
+                let x = (Math.random() * ((innerWidth - size * 2) - (size * 2)) + size * 2);
+                let y = (Math.random() * ((innerHeight - size * 2) - (size * 2)) + size * 2);
+                let directionX = (Math.random() * .4) - .2;
+                let directionY = (Math.random() * .4) - .2;
+                particlesArray.push(new Particle(x, y, directionX, directionY, size, color));
+            }
         }
-        initWebGL();
-        animateWebGL();
 
-        // --- Live TV Ad Showcase ---
+        function connect() {
+            let color = getParticleColor();
+            for (let a = 0; a < particlesArray.length; a++) {
+                for (let b = a; b < particlesArray.length; b++) {
+                    let distance = ((particlesArray[a].x - particlesArray[b].x) * (particlesArray[a].x - particlesArray[b].x)) +
+                        ((particlesArray[a].y - particlesArray[b].y) * (particlesArray[a].y - particlesArray[b].y));
+                    if (distance < (constellationCanvas.width / 7) * (constellationCanvas.height / 7)) {
+                        let opacityValue = 1 - (distance / 20000);
+                        constellationCtx.strokeStyle = color.replace(/[\d\.]+\)/, opacityValue + ')');
+                        constellationCtx.lineWidth = 1;
+                        constellationCtx.beginPath();
+                        constellationCtx.moveTo(particlesArray[a].x, particlesArray[a].y);
+                        constellationCtx.lineTo(particlesArray[b].x, particlesArray[b].y);
+                        constellationCtx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animateConstellation() {
+            requestAnimationFrame(animateConstellation);
+            constellationCtx.clearRect(0, 0, innerWidth, innerHeight);
+            for (let i = 0; i < particlesArray.length; i++) {
+                particlesArray[i].update();
+            }
+            connect();
+        }
+
+        window.addEventListener('resize', initConstellation);
+        new MutationObserver(() => initConstellation()).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        initConstellation();
+        animateConstellation();
+
+        // --- Live TV Ad Showcase & Konami Code ---
         const tvScreen = document.getElementById('tv-screen');
         const ads = [
             { bg: 'linear-gradient(45deg, #6d28d9, #d946ef)', icon: 'coffee', title: 'CodeBrew Coffee', text: 'The official fuel for developers.' },
@@ -421,7 +531,6 @@
             { bg: 'linear-gradient(45deg, #db2777, #fb923c)', icon: 'cpu', title: 'Quantum Leap Hosting', text: 'So fast, it loads before you click.' }
         ];
         let currentAdIndex = 0;
-
         function showAd() {
             const ad = ads[currentAdIndex];
             tvScreen.innerHTML = `<div class="fake-ad" style="background: ${ad.bg};"><i data-feather="${ad.icon}" class="w-12 h-12 mb-3"></i><h3 class="text-xl font-bold mb-1">${ad.title}</h3><p class="text-sm">${ad.text}</p></div>`;
@@ -432,7 +541,6 @@
         showAd();
         setInterval(showAd, 5000);
 
-        // --- Konami Code Easter Egg ---
         const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
         let konamiIndex = 0;
         document.addEventListener('keydown', (e) => {
@@ -464,19 +572,16 @@
         const matrixCanvas = document.getElementById('matrix-canvas');
         const matrixCtx = matrixCanvas.getContext('2d');
         const matrixContainer = document.getElementById('matrix-canvas-container');
-
         function resizeMatrix() {
             matrixCanvas.width = matrixContainer.clientWidth;
             matrixCanvas.height = matrixContainer.clientHeight;
         }
         resizeMatrix();
         
-        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
-        const alphabet = katakana + 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        const alphabet = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッンABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
         const fontSize = 16;
         const columns = matrixCanvas.width / fontSize;
         const rainDrops = Array(Math.floor(columns)).fill(1);
-
         const drawMatrix = () => {
             matrixCtx.fillStyle = 'rgba(30, 41, 59, 0.05)';
             matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
@@ -509,59 +614,195 @@
         });
 
         // --- Snake Game ---
-        const board = document.getElementById('game-board'), scoreEl = document.getElementById('score'), startBtn = document.getElementById('start-game');
-        const gridSize = 20;
-        let snake, food, direction, gameInterval, score;
-        function initGame() {
-            snake = [{ x: 10, y: 10 }]; food = generateFood(); direction = { x: 0, y: 0 }; score = 0;
-            scoreEl.textContent = score; if(gameInterval) clearInterval(gameInterval); draw();
+        const snakeBoard = document.getElementById('game-board'), snakeScoreEl = document.getElementById('snake-score'), startSnakeBtn = document.getElementById('start-snake');
+        const snakeGridSize = 20;
+        let snake, snakeFood, snakeDirection, snakeGameInterval, snakeScore;
+        function initSnakeGame() {
+            snake = [{ x: 10, y: 10 }]; snakeFood = generateSnakeFood(); snakeDirection = { x: 0, y: 0 }; snakeScore = 0;
+            snakeScoreEl.textContent = snakeScore; if(snakeGameInterval) clearInterval(snakeGameInterval); drawSnake();
         }
-        function draw() {
-            board.innerHTML = '';
-            snake.forEach(seg => { const el = document.createElement('div'); el.style.gridRowStart = seg.y; el.style.gridColumnStart = seg.x; el.classList.add('snake-segment'); board.appendChild(el); });
-            const foodEl = document.createElement('div'); foodEl.style.gridRowStart = food.y; foodEl.style.gridColumnStart = food.x; foodEl.classList.add('food'); board.appendChild(foodEl);
+        function drawSnake() {
+            snakeBoard.innerHTML = '';
+            snake.forEach(seg => { const el = document.createElement('div'); el.style.gridRowStart = seg.y; el.style.gridColumnStart = seg.x; el.classList.add('snake-segment'); snakeBoard.appendChild(el); });
+            const foodEl = document.createElement('div'); foodEl.style.gridRowStart = snakeFood.y; foodEl.style.gridColumnStart = snakeFood.x; foodEl.classList.add('food'); snakeBoard.appendChild(foodEl);
         }
-        function update() {
-            const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+        function updateSnake() {
+            const head = { x: snake[0].x + snakeDirection.x, y: snake[0].y + snakeDirection.y };
             snake.unshift(head);
-            if (head.x === food.x && head.y === food.y) { score++; scoreEl.textContent = score; food = generateFood(); } else { snake.pop(); }
-            if (isGameOver()) { clearInterval(gameInterval); alert('Game Over! Score: ' + score); initGame(); return; }
-            draw();
+            if (head.x === snakeFood.x && head.y === snakeFood.y) { snakeScore++; snakeScoreEl.textContent = snakeScore; snakeFood = generateSnakeFood(); } else { snake.pop(); }
+            if (isSnakeGameOver()) { clearInterval(snakeGameInterval); alert('Game Over! Score: ' + snakeScore); initSnakeGame(); return; }
+            drawSnake();
         }
-        function generateFood() {
+        function generateSnakeFood() {
             let newFood;
-            do { newFood = { x: Math.floor(Math.random() * gridSize) + 1, y: Math.floor(Math.random() * gridSize) + 1 };
+            do { newFood = { x: Math.floor(Math.random() * snakeGridSize) + 1, y: Math.floor(Math.random() * snakeGridSize) + 1 };
             } while (snake.some(seg => seg.x === newFood.x && seg.y === newFood.y));
             return newFood;
         }
-        function isGameOver() {
+        function isSnakeGameOver() {
             const head = snake[0];
-            if (head.x < 1 || head.x > gridSize || head.y < 1 || head.y > gridSize) return true;
+            if (head.x < 1 || head.x > snakeGridSize || head.y < 1 || head.y > snakeGridSize) return true;
             for (let i = 1; i < snake.length; i++) { if (head.x === snake[i].x && head.y === snake[i].y) return true; }
             return false;
         }
-        startBtn.addEventListener('click', () => { initGame(); if(gameInterval) clearInterval(gameInterval); gameInterval = setInterval(update, 200); });
+        startSnakeBtn.addEventListener('click', () => { initSnakeGame(); if(snakeGameInterval) clearInterval(snakeGameInterval); snakeGameInterval = setInterval(updateSnake, 200); });
+        
+        // --- Tetris Game ---
+        const tetrisBoard = document.getElementById('tetris-board');
+        const tetrisScoreEl = document.getElementById('tetris-score');
+        const startTetrisBtn = document.getElementById('start-tetris');
+        const COLS = 10, ROWS = 20;
+        let board, currentPiece, tetrisScore, tetrisGameInterval;
+
+        const PIECES = [
+            { shape: [[1,1,1,1]], color: 'I' }, // I
+            { shape: [[1,1],[1,1]], color: 'O' }, // O
+            { shape: [[0,1,0],[1,1,1]], color: 'T' }, // T
+            { shape: [[0,0,1],[1,1,1]], color: 'L' }, // L
+            { shape: [[1,0,0],[1,1,1]], color: 'J' }, // J
+            { shape: [[0,1,1],[1,1,0]], color: 'S' }, // S
+            { shape: [[1,1,0],[0,1,1]], color: 'Z' }  // Z
+        ];
+
+        function createEmptyBoard() { return Array.from({ length: ROWS }, () => Array(COLS).fill(0)); }
+
+        function drawTetris() {
+            tetrisBoard.innerHTML = '';
+            board.forEach(row => row.forEach(value => {
+                const cell = document.createElement('div');
+                cell.classList.add('tetris-cell');
+                if (value) cell.classList.add(value);
+                tetrisBoard.appendChild(cell);
+            }));
+
+            currentPiece.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        const cellIndex = (currentPiece.y + y) * COLS + (currentPiece.x + x);
+                        if (tetrisBoard.children[cellIndex]) {
+                           tetrisBoard.children[cellIndex].classList.add(currentPiece.color);
+                        }
+                    }
+                });
+            });
+        }
+        
+        function movePiece(dx, dy) {
+            if (!collision(dx, dy, currentPiece)) {
+                currentPiece.x += dx;
+                currentPiece.y += dy;
+            } else if (dy > 0) {
+                freeze();
+                spawnNewPiece();
+            }
+        }
+
+        function rotatePiece() {
+            const shape = currentPiece.shape.map((_, i) => currentPiece.shape.map(row => row[i])).reverse();
+            if (!collision(0, 0, { ...currentPiece, shape })) {
+                currentPiece.shape = shape;
+            }
+        }
+
+        function collision(dx, dy, piece) {
+            return piece.shape.some((row, y) => 
+                row.some((value, x) => {
+                    if (!value) return false;
+                    const newX = piece.x + x + dx;
+                    const newY = piece.y + y + dy;
+                    return newX < 0 || newX >= COLS || newY >= ROWS || (board[newY] && board[newY][newX]);
+                })
+            );
+        }
+
+        function freeze() {
+            currentPiece.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        board[currentPiece.y + y][currentPiece.x + x] = currentPiece.color;
+                    }
+                });
+            });
+            clearLines();
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+            for (let y = ROWS - 1; y >= 0; y--) {
+                if (board[y].every(value => value)) {
+                    linesCleared++;
+                    board.splice(y, 1);
+                    board.unshift(Array(COLS).fill(0));
+                }
+            }
+            if(linesCleared > 0) {
+                tetrisScore += linesCleared * 10;
+                tetrisScoreEl.textContent = tetrisScore;
+            }
+        }
+
+        function spawnNewPiece() {
+            const piece = PIECES[Math.floor(Math.random() * PIECES.length)];
+            currentPiece = { ...piece, x: Math.floor(COLS / 2) - 1, y: 0 };
+            if (collision(0, 0, currentPiece)) {
+                clearInterval(tetrisGameInterval);
+                alert('Game Over! Score: ' + tetrisScore);
+            }
+        }
+
+        function initTetris() {
+            board = createEmptyBoard();
+            tetrisScore = 0;
+            tetrisScoreEl.textContent = tetrisScore;
+            spawnNewPiece();
+            if (tetrisGameInterval) clearInterval(tetrisGameInterval);
+            tetrisGameInterval = setInterval(() => movePiece(0, 1), 1000);
+            drawTetris();
+        }
+        
+        startTetrisBtn.addEventListener('click', initTetris);
+        
+        // Combined Key Listener for Games
         document.addEventListener('keydown', e => {
+            // Snake Controls
             switch (e.key) {
-                case 'ArrowUp': if (direction.y === 0) direction = { x: 0, y: -1 }; break;
-                case 'ArrowDown': if (direction.y === 0) direction = { x: 0, y: 1 }; break;
-                case 'ArrowLeft': if (direction.x === 0) direction = { x: -1, y: 0 }; break;
-                case 'ArrowRight': if (direction.x === 0) direction = { x: 1, y: 0 }; break;
+                case 'ArrowUp': if (snakeDirection.y === 0) snakeDirection = { x: 0, y: -1 }; break;
+                // case 'ArrowDown': if (snakeDirection.y === 0) snakeDirection = { x: 0, y: 1 }; break; // Down is for Tetris
+                case 'ArrowLeft': if (snakeDirection.x === 0) snakeDirection = { x: -1, y: 0 }; break;
+                case 'ArrowRight': if (snakeDirection.x === 0) snakeDirection = { x: 1, y: 0 }; break;
+            }
+            // Tetris Controls
+            if (currentPiece) {
+                switch (e.key) {
+                    case 'ArrowLeft': movePiece(-1, 0); break;
+                    case 'ArrowRight': movePiece(1, 0); break;
+                    case 'ArrowDown': movePiece(0, 1); break;
+                    case 'ArrowUp': rotatePiece(); break;
+                }
+                drawTetris();
             }
         });
-        initGame();
+        
+        initSnakeGame();
+        initTetris();
 
-        // --- Animated Skills Bars ---
-        const skillsSection = document.getElementById('skills-section');
-        const skillsObserver = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                skillsSection.querySelectorAll('.skill').forEach(skill => {
-                    skill.querySelector('.skill-bar').style.width = skill.getAttribute('data-level') + '%';
-                });
-                skillsObserver.unobserve(skillsSection);
-            }
-        }, { threshold: 0.5 });
-        skillsObserver.observe(skillsSection);
+
+        // --- Animated Skills & About Me Bars ---
+        const revealElements = document.querySelectorAll('.reveal-on-scroll, .skill');
+        const revealObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    if (entry.target.classList.contains('skill')) {
+                        entry.target.querySelector('.skill-bar').style.width = entry.target.getAttribute('data-level') + '%';
+                    } else {
+                        entry.target.classList.add('visible');
+                    }
+                    revealObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.15 });
+
+        revealElements.forEach(el => revealObserver.observe(el));
     });
     </script>
 </body>
