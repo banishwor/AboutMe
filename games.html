@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Games - Banishwor's Arcade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="antialiased">
+
+    <div id="loader">
+        <div id="loader-text">Entering the game dimension...</div>
+        <div class="progress-bar"><div id="progress"></div></div>
+        <p class="text-xs text-slate-400">Loading awesome games...</p>
+    </div>
+
+    <canvas id="constellation-canvas"></canvas>
+    
+    <div class="content-wrapper">
+        <header class="shadow-sm sticky top-0 z-50 border-b border-default">
+            <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+                <a href="index.html" class="text-2xl font-bold">← Back to Portfolio</a>
+                <div class="flex items-center gap-4">
+                    <h1 class="text-xl font-bold">🎮 Interactive Arcade</h1>
+                    <button id="theme-toggle" class="p-2 rounded-full text-subtle hover:bg-gray-200 dark:hover:bg-slate-700">
+                        <i data-feather="moon" class="block dark:hidden"></i>
+                        <i data-feather="sun" class="hidden dark:block"></i>
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto px-6 py-16 md:py-24">
+            <div class="text-center mb-16">
+                <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-4">🎮 Game Dimension</h1>
+                <p class="text-lg md:text-xl text-subtle">Welcome to the interactive gaming universe!</p>
+            </div>
+
+            <!-- Retro Arcade Cabinet -->
+            <section class="arcade-wrapper max-w-4xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold mb-6 text-center">🕹️ Retro Arcade Cabinet</h2>
+                <div class="arcade-cabinet">
+                    <div class="arcade-marquee">
+                        <span class="marquee-text">SUPER RETRO</span>
+                    </div>
+                    <div class="arcade-bezel">
+                        <div id="phaser-container" class="arcade-screen"></div>
+                    </div>
+                    <div class="arcade-control-panel">
+                        <div class="virtual-joystick" id="virtual-joystick">
+                            <div class="virtual-joystick-knob" id="virtual-joystick-knob"></div>
+                        </div>
+                        <button id="arcade-jump" class="arcade-button" aria-label="Jump">A</button>
+                    </div>
+                </div>
+                <p class="text-center text-xs text-subtle mt-3">Use joystick or ← → to move, A/Space/↑ to jump</p>
+            </section>
+
+            <!-- PSP-like Handheld with Embedded Game -->
+            <section class="psp-wrapper max-w-5xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold mb-6 text-center">🕹️ PSP Mode: Classic DOS Game</h2>
+                <div class="psp-body">
+                    <div class="psp-left-controls" aria-hidden="true">
+                        <div class="psp-dpad">
+                            <span class="psp-dpad-up"></span>
+                            <span class="psp-dpad-right"></span>
+                            <span class="psp-dpad-down"></span>
+                            <span class="psp-dpad-left"></span>
+                        </div>
+                        <div class="psp-stick"></div>
+                    </div>
+                    <div class="psp-screen-bezel">
+                        <div class="psp-speaker psp-speaker-left" aria-hidden="true"></div>
+                        <div class="psp-speaker psp-speaker-right" aria-hidden="true"></div>
+                        <div class="psp-screen">
+                            <iframe
+                                title="DOOM (DOS, 1993)"
+                                src="https://archive.org/embed/msdos_DOOM_1993"
+                                frameborder="0"
+                                allowfullscreen
+                                scrolling="no"
+                                class="psp-iframe">
+                            </iframe>
+                        </div>
+                    </div>
+                    <div class="psp-right-controls" aria-hidden="true">
+                        <div class="psp-abxy">
+                            <button class="psp-btn psp-a" aria-label="A"></button>
+                            <button class="psp-btn psp-b" aria-label="B"></button>
+                            <button class="psp-btn psp-x" aria-label="X"></button>
+                            <button class="psp-btn psp-y" aria-label="Y"></button>
+                        </div>
+                        <div class="psp-aux">
+                            <button class="psp-pill" aria-label="Start"></button>
+                            <button class="psp-pill" aria-label="Select"></button>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center text-xs text-subtle mt-3">Tip: Rotate your phone for a larger screen. The game is fully playable via touch and keyboard.</p>
+            </section>
+
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                
+                <!-- Snake Game -->
+                <div class="card p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-center">🐍 Snake Game</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-4">
+                            <div>Score: <span id="snake-score">0</span></div>
+                            <div>High: <span id="snake-high-score">0</span></div>
+                        </div>
+                        <button id="start-snake" class="bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Start</button>
+                    </div>
+                    <div id="snake-game" class="mb-4">
+                        <div id="snake-head"></div>
+                    </div>
+                    <div class="snake-controls">
+                        <div class="flex justify-center mb-2">
+                            <button id="up-btn" class="snake-btn bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">↑</button>
+                        </div>
+                        <div class="flex justify-center gap-4">
+                            <button id="left-btn" class="snake-btn bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">←</button>
+                            <button id="right-btn" class="snake-btn bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">→</button>
+                        </div>
+                        <div class="flex justify-center mt-2">
+                            <button id="down-btn" class="snake-btn bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">↓</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tetris Game -->
+                <div class="card p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-center">🧩 Tetris</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-4">
+                            <div>Score: <span id="tetris-score">0</span></div>
+                            <div>Lines: <span id="tetris-lines">0</span></div>
+                        </div>
+                        <button id="start-tetris" class="bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Start</button>
+                    </div>
+                    <canvas id="tetris-canvas" width="200" height="400" class="border border-gray-300 dark:border-gray-600 mx-auto block"></canvas>
+                    <div class="mt-4 text-center">
+                        <p class="text-sm text-subtle">Use ← → to move, ↓ to drop, ↑ to rotate</p>
+                    </div>
+                </div>
+
+                <!-- Memory Game -->
+                <div class="card p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-center">🧠 Memory Match</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-4">
+                            <div>Moves: <span id="memory-moves">0</span></div>
+                            <div>Time: <span id="memory-time">0s</span></div>
+                        </div>
+                        <button id="start-memory" class="bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Start</button>
+                    </div>
+                    <div id="memory-game" class="grid grid-cols-4 gap-2 mb-4">
+                        <!-- Cards will be generated by JS -->
+                    </div>
+                </div>
+
+                <!-- Breakout Game -->
+                <div class="card p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-center">🏓 Breakout</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-4">
+                            <div>Score: <span id="breakout-score">0</span></div>
+                            <div>Lives: <span id="breakout-lives">3</span></div>
+                        </div>
+                        <button id="start-breakout" class="bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Start</button>
+                    </div>
+                    <canvas id="breakout-canvas" width="300" height="400" class="border border-gray-300 dark:border-gray-600 mx-auto block"></canvas>
+                </div>
+
+                <!-- Flappy Bird -->
+                <div class="card p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-center">🐦 Flappy Bird</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-4">
+                            <div>Score: <span id="flappy-score">0</span></div>
+                            <div>High: <span id="flappy-high-score">0</span></div>
+                        </div>
+                        <button id="start-flappy" class="bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Start</button>
+                    </div>
+                    <canvas id="flappy-canvas" width="300" height="400" class="border border-gray-300 dark:border-gray-600 mx-auto block"></canvas>
+                    <div class="mt-4 text-center">
+                        <p class="text-sm text-subtle">Click or press Space to flap</p>
+                    </div>
+                </div>
+
+                <!-- Pong Game -->
+                <div class="card p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-center">🏓 Pong</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex gap-4">
+                            <div>Player: <span id="pong-player-score">0</span></div>
+                            <div>AI: <span id="pong-ai-score">0</span></div>
+                        </div>
+                        <button id="start-pong" class="bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Start</button>
+                    </div>
+                    <canvas id="pong-canvas" width="300" height="400" class="border border-gray-300 dark:border-gray-600 mx-auto block"></canvas>
+                    <div class="mt-4 text-center">
+                        <p class="text-sm text-subtle">Use ↑ ↓ to move paddle</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+
+        <footer class="py-16 text-center">
+            <a href="index.html" class="inline-block bg-accent text-white text-lg font-semibold px-8 py-4 rounded-full hover:bg-accent-dark transition shadow-lg">
+                🌀 Return Through Wormhole
+            </a>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.0/dist/phaser.min.js"></script>
+    <script src="games.js"></script>
+</body>
+</html>
