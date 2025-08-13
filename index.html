@@ -69,8 +69,8 @@
                             <div class="terminal-dot bg-yellow-500"></div>
                             <div class="terminal-dot bg-green-500"></div>
                         </div>
-                        <div class="terminal-body" id="terminal-body">
-                            <span id="terminal-text"></span><span class="cursor"></span>
+                        <div class="terminal-body" id="terminal-body" tabindex="0">
+                            <span id="terminal-text"></span>
                         </div>
                     </div>
                 </div>
@@ -140,31 +140,27 @@
                         </div>
                     </div>
 
-                    <div class="w-full grid lg:grid-cols-2 gap-12">
-                        <div>
-                            <h3 class="text-2xl font-bold mb-4 text-center lg:text-left">Dinosaur Game</h3>
-                            <div class="card p-4">
-                                <div class="flex justify-between items-center mb-4">
+                                        <div class="w-full max-w-2xl mx-auto">
+                        <h3 class="text-2xl font-bold mb-4 text-center">Dinosaur Game</h3>
+                        <div class="card p-4">
+                            <div class="flex justify-between items-center mb-4">
+                                <div class="flex gap-4">
                                     <div>Score: <span id="dino-score">0</span></div>
-                                    <button id="start-dino" class="bg-gray-500 text-white px-4 py-1 rounded-md hover:bg-gray-600 transition">Start</button>
+                                    <div>High Score: <span id="dino-high-score">0</span></div>
                                 </div>
-                                <div id="dino-game">
-                                    <div id="dino"></div>
-                                </div>
-                                <p class="text-xs text-subtle mt-4 text-center">Press Spacebar to Jump</p>
+                                <button id="start-dino" class="bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Start Game</button>
                             </div>
-                        </div>
-                        <div>
-                            <h3 class="text-2xl font-bold mb-4 text-center lg:text-left">Code Battle Arena</h3>
-                            <div class="card p-6">
-                                <p class="font-semibold mb-2">Challenge: The `sum` Function</p>
-                                <p class="text-subtle mb-4">Write a JS function that takes an array of numbers and returns their total.</p>
-                                <div class="code-editor mb-4">
-                                    <textarea id="code-input">function sum(numbers) {\n  // Your code here\n}</textarea>
-                                </div>
-                                <button id="run-code" class="w-full bg-accent text-white px-4 py-2 rounded-md hover:bg-accent-dark transition">Run & Test</button>
-                                <pre id="code-output" class="mt-4 p-4 bg-gray-100 dark:bg-slate-900 rounded-md text-sm whitespace-pre-wrap"></pre>
+                            <div id="dino-game">
+                                <div id="dino"></div>
                             </div>
+                            <div class="dino-controls mt-4">
+                                <div class="flex justify-center">
+                                    <button id="jump-btn" class="bg-accent text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-accent-dark transition shadow-lg">
+                                        🦘 JUMP
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-xs text-subtle mt-4 text-center">Press Spacebar, Up Arrow, or tap JUMP button</p>
                         </div>
                     </div>
 

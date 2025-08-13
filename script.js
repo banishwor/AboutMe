@@ -167,16 +167,155 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // --- Matrix Terminal ---
         const terminalTextElement = document.getElementById('terminal-text');
-        const textToType = `banishwor@portfolio:~$ ./welcome.sh\n\nHello there! I'm Banishwor, a software developer who loves building cool things for the web.`;
+        const terminalBody = document.getElementById('terminal-body');
+        let currentCommand = '';
+        let commandHistory = [];
+        let historyIndex = -1;
+        
+        const textToType = `banishwor@portfolio:~$ ./welcome.sh\n\nHello there! I'm Banishwor, a software developer who loves building cool things for the web.\n\nbanishwor@portfolio:~$ `;
         let i = 0;
+        let typingComplete = false;
+        
         function typeWriter() {
             if (i < textToType.length) {
                 terminalTextElement.innerHTML += textToType.charAt(i) === '\n' ? '<br>' : textToType.charAt(i);
                 i++;
                 setTimeout(typeWriter, Math.random() * 50 + 20);
+            } else {
+                typingComplete = true;
+                // Add cursor after typing is complete
+                terminalTextElement.innerHTML += '<span class="cursor"></span>';
             }
         }
         typeWriter();
+
+        // Handle terminal input
+        function handleCommand(command) {
+            command = command.trim();
+            if (!command) return;
+            
+            // Add to history
+            commandHistory.push(command);
+            historyIndex = commandHistory.length;
+            
+            // Process command
+            let output = '';
+            if (command === 'ls -l') {
+                output = `total 8
+drwxr-xr-x  2 banishwor banishwor 4096 Dec 15 10:30 .
+drwxr-xr-x  3 banishwor banishwor 4096 Dec 15 10:30 ..
+-rw-r--r--  1 banishwor banishwor  256 Dec 15 10:30 welcome.sh
+-rw-r--r--  1 banishwor banishwor  512 Dec 15 10:30 portfolio.html
+-rw-r--r--  1 banishwor banishwor 1024 Dec 15 10:30 projects.js
+-rw-r--r--  1 banishwor banishwor  128 Dec 15 10:30 .secret
+-rw-r--r--  1 banishwor banishwor  256 Dec 15 10:30 easter_egg.txt
+-rw-r--r--  1 banishwor banishwor  512 Dec 15 10:30 cool_stuff.md
+
+🎉 Easter egg found! You discovered my secret files! 🎉
+There's more to explore in this portfolio...`;
+            } else if (command === 'ls') {
+                output = `welcome.sh  portfolio.html  projects.js  .secret  easter_egg.txt  cool_stuff.md`;
+            } else if (command === 'cat .secret') {
+                output = `You found the secret file! 
+This portfolio is full of hidden surprises.
+Try exploring more commands...`;
+            } else if (command === 'cat easter_egg.txt') {
+                output = `🎮 Hidden Features:
+- Konami Code (↑↑↓↓←→←→BA)
+- Matrix rain effect
+- Interactive terminal (you're using it!)
+- Dinosaur game
+- Code battle arena
+- Live TV ads
+- And more...`;
+            } else if (command === 'cat cool_stuff.md') {
+                output = `# Cool Stuff I've Built
+
+## This Portfolio
+- Interactive terminal with easter eggs
+- Matrix rain background
+- Responsive design with dark mode
+- Animated skills bars
+- Mini games and interactive elements
+
+## Other Projects
+- Yek Salai Website (genealogical data)
+- Android app on Amazon Appstore
+- MCA research on clustering algorithms
+
+Thanks for exploring! 🚀`;
+            } else if (command === 'help') {
+                output = `Available commands:
+- ls: List files
+- ls -l: Detailed file listing (with easter egg!)
+- cat <filename>: View file contents
+- help: Show this help
+- clear: Clear terminal
+- exit: Close terminal (just kidding, you can't escape!)`;
+            } else if (command === 'clear') {
+                terminalTextElement.innerHTML = '';
+                return;
+            } else {
+                output = `bash: ${command}: command not found
+Try 'help' for available commands`;
+            }
+            
+            // Add command and output to terminal
+            terminalTextElement.innerHTML += `<br><span class="text-green-400">banishwor@portfolio:~$</span> ${command}<br>${output}<br><span class="text-green-400">banishwor@portfolio:~$</span> <span class="cursor"></span>`;
+        }
+
+        // Handle keyboard input
+        document.addEventListener('keydown', (e) => {
+            if (!typingComplete) return;
+            
+            // Only handle terminal input if terminal is focused or if it's a global shortcut
+            const isTerminalFocused = document.activeElement === terminalBody;
+            
+            if (e.key === 'Enter' && isTerminalFocused) {
+                e.preventDefault();
+                handleCommand(currentCommand);
+                currentCommand = '';
+            } else if (e.key === 'Backspace' && isTerminalFocused) {
+                e.preventDefault();
+                if (currentCommand.length > 0) {
+                    currentCommand = currentCommand.slice(0, -1);
+                    updateTerminalDisplay();
+                }
+            } else if (e.key === 'ArrowUp' && isTerminalFocused) {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    currentCommand = commandHistory[historyIndex];
+                    updateTerminalDisplay();
+                }
+            } else if (e.key === 'ArrowDown' && isTerminalFocused) {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    currentCommand = commandHistory[historyIndex];
+                } else {
+                    historyIndex = commandHistory.length;
+                    currentCommand = '';
+                }
+                updateTerminalDisplay();
+            } else if (e.key.length === 1 && isTerminalFocused) {
+                e.preventDefault();
+                currentCommand += e.key;
+                updateTerminalDisplay();
+            }
+        });
+
+        // Auto-focus terminal when clicked
+        terminalBody.addEventListener('click', () => {
+            terminalBody.focus();
+        });
+
+        function updateTerminalDisplay() {
+            // Remove the last line (current command) and add updated one
+            const lines = terminalTextElement.innerHTML.split('<br>');
+            lines.pop(); // Remove the last line
+            terminalTextElement.innerHTML = lines.join('<br>') + '<br><span class="text-green-400">banishwor@portfolio:~$</span> ' + currentCommand + '<span class="cursor"></span>';
+        }
 
         const matrixCanvas = document.getElementById('matrix-canvas');
         const matrixCtx = matrixCanvas.getContext('2d');
@@ -208,85 +347,220 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(drawMatrix, 40);
         window.addEventListener('resize', resizeMatrix);
 
-        // --- Code Battle Arena ---
-        document.getElementById('run-code').addEventListener('click', () => {
-            const userCode = document.getElementById('code-input').value;
-            let output = '';
-            try {
-                const fn = new Function('return ' + userCode)();
-                [[[1, 2, 3], 6], [[10, -5, 8], 13], [[], 0]].forEach(([test, expected], i) => {
-                    const result = fn([...test]);
-                    output += result === expected ? `Test ${i+1}: PASSED ✅\n` : `Test ${i+1}: FAILED ❌ (Expected ${expected}, got ${result})\n`;
-                });
-            } catch (e) { output = 'Error: ' + e.message; }
-            document.getElementById('code-output').textContent = output;
-        });
+
 
         // --- Dinosaur Game ---
         const dinoGame = document.getElementById('dino-game');
         const dino = document.getElementById('dino');
         const dinoScoreEl = document.getElementById('dino-score');
+        const dinoHighScoreEl = document.getElementById('dino-high-score');
         const startDinoBtn = document.getElementById('start-dino');
+        const jumpBtn = document.getElementById('jump-btn');
         let dinoScore = 0;
         let isJumping = false;
+        let isGameRunning = false;
+        let gameSpeed = 6;
+        let obstacleInterval = 2000;
+        let cloudInterval = 3000;
         let dinoGameInterval;
+        let obstacleTimer;
+        let cloudTimer;
+        let highScore = localStorage.getItem('dinoHighScore') || 0;
+        
+        // Display initial high score
+        dinoHighScoreEl.textContent = highScore;
 
         function jump() {
-            if (isJumping) return;
+            if (isJumping || !isGameRunning) return;
             isJumping = true;
             dino.classList.add('jump');
+            dino.classList.remove('running');
+            
             setTimeout(() => {
                 dino.classList.remove('jump');
+                dino.classList.add('running');
                 isJumping = false;
-            }, 500);
+            }, 600);
         }
 
-        document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') jump();
-        });
+        function createObstacle() {
+            if (!isGameRunning) return;
+            
+            const obstacle = document.createElement('div');
+            const isBird = Math.random() < 0.3 && dinoScore > 100; // Birds appear after score 100
+            
+            if (isBird) {
+                obstacle.classList.add('obstacle', 'bird');
+                obstacle.style.bottom = '120px'; // Birds fly higher
+            } else {
+                obstacle.classList.add('obstacle');
+                obstacle.style.bottom = '50px';
+            }
+            
+            obstacle.style.left = '100%';
+            dinoGame.appendChild(obstacle);
+
+            let obstaclePosition = dinoGame.clientWidth;
+            const moveObstacle = () => {
+                if (!isGameRunning) {
+                    obstacle.remove();
+                    return;
+                }
+                
+                if (obstaclePosition < -50) {
+                    obstacle.remove();
+                    return;
+                }
+                
+                const dinoRect = dino.getBoundingClientRect();
+                const obstacleRect = obstacle.getBoundingClientRect();
+
+                // Collision detection
+                if (
+                    obstacleRect.left < dinoRect.right - 10 &&
+                    obstacleRect.right > dinoRect.left + 10 &&
+                    obstacleRect.top < dinoRect.bottom - 10 &&
+                    obstacleRect.bottom > dinoRect.top + 10
+                ) {
+                    gameOver();
+                    return;
+                }
+                
+                obstaclePosition -= gameSpeed;
+                obstacle.style.left = obstaclePosition + 'px';
+                requestAnimationFrame(moveObstacle);
+            };
+            moveObstacle();
+        }
+
+        function createCloud() {
+            if (!isGameRunning) return;
+            
+            const cloud = document.createElement('div');
+            cloud.classList.add('cloud');
+            cloud.style.top = Math.random() * 100 + 'px';
+            cloud.style.left = '100%';
+            dinoGame.appendChild(cloud);
+
+            let cloudPosition = dinoGame.clientWidth;
+            const moveCloud = () => {
+                if (!isGameRunning) {
+                    cloud.remove();
+                    return;
+                }
+                
+                if (cloudPosition < -60) {
+                    cloud.remove();
+                    return;
+                }
+                
+                cloudPosition -= gameSpeed * 0.5; // Clouds move slower
+                cloud.style.left = cloudPosition + 'px';
+                requestAnimationFrame(moveCloud);
+            };
+            moveCloud();
+        }
+
+        function updateScore() {
+            if (!isGameRunning) return;
+            
+            dinoScore++;
+            dinoScoreEl.textContent = dinoScore;
+            
+            // Increase game speed every 100 points
+            if (dinoScore % 100 === 0) {
+                gameSpeed += 0.5;
+                obstacleInterval = Math.max(800, obstacleInterval - 100);
+            }
+            
+            // Update high score
+            if (dinoScore > highScore) {
+                highScore = dinoScore;
+                localStorage.setItem('dinoHighScore', highScore);
+                dinoHighScoreEl.textContent = highScore;
+            }
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            dino.classList.remove('running');
+            
+            clearInterval(dinoGameInterval);
+            clearInterval(obstacleTimer);
+            clearInterval(cloudTimer);
+            
+            // Remove all obstacles and clouds
+            document.querySelectorAll('.obstacle, .cloud').forEach(el => el.remove());
+            
+            // Show game over screen
+            const gameOverScreen = document.createElement('div');
+            gameOverScreen.className = 'game-over';
+            gameOverScreen.innerHTML = `
+                <h3>Game Over!</h3>
+                <p>Score: ${dinoScore}</p>
+                <p>High Score: ${highScore}</p>
+                <button onclick="restartGame()">Play Again</button>
+            `;
+            dinoGame.appendChild(gameOverScreen);
+        }
+
+        function restartGame() {
+            // Remove game over screen
+            const gameOverScreen = dinoGame.querySelector('.game-over');
+            if (gameOverScreen) gameOverScreen.remove();
+            
+            // Reset game state
+            dinoScore = 0;
+            gameSpeed = 6;
+            obstacleInterval = 2000;
+            isGameRunning = true;
+            
+            // Start animations
+            dino.classList.add('running');
+            
+            // Start game loops
+            dinoGameInterval = setInterval(updateScore, 100);
+            obstacleTimer = setInterval(createObstacle, obstacleInterval);
+            cloudTimer = setInterval(createCloud, cloudInterval);
+        }
+        
+        // Make restart function globally accessible
+        window.restartGame = restartGame;
 
         function startGame() {
-            if (dinoGameInterval) clearInterval(dinoGameInterval);
-            dinoScore = 0;
-            dinoScoreEl.textContent = 0;
-            document.querySelectorAll('.obstacle').forEach(o => o.remove());
-
-            dinoGameInterval = setInterval(() => {
-                dinoScore++;
-                dinoScoreEl.textContent = dinoScore;
-
-                const obstacle = document.createElement('div');
-                obstacle.classList.add('obstacle');
-                obstacle.style.left = '100%';
-                dinoGame.appendChild(obstacle);
-
-                let obstaclePosition = dinoGame.clientWidth;
-                const obstacleTimer = setInterval(() => {
-                    if (obstaclePosition < -20) {
-                        clearInterval(obstacleTimer);
-                        obstacle.remove();
-                    }
-                    
-                    const dinoRect = dino.getBoundingClientRect();
-                    const obstacleRect = obstacle.getBoundingClientRect();
-
-                    if (
-                        obstacleRect.left < dinoRect.right &&
-                        obstacleRect.right > dinoRect.left &&
-                        obstacleRect.top < dinoRect.bottom &&
-                        obstacleRect.bottom > dinoRect.top
-                    ) {
-                        clearInterval(dinoGameInterval);
-                        clearInterval(obstacleTimer);
-                        alert('Game Over! Score: ' + dinoScore);
-                    }
-                    
-                    obstaclePosition -= 10;
-                    obstacle.style.left = obstaclePosition + 'px';
-                }, 20);
-            }, 2000);
+            if (isGameRunning) return;
+            
+            // Reset score display
+            dinoScoreEl.textContent = '0';
+            
+            // Start the game
+            restartGame();
         }
+
+        // Event listeners
         startDinoBtn.addEventListener('click', startGame);
+        
+        // Virtual jump button
+        jumpBtn.addEventListener('click', jump);
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            jump();
+        });
+        
+        // Global jump controls
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                jump();
+            }
+        });
+        
+        // Touch/click support for mobile (on game area)
+        dinoGame.addEventListener('click', jump);
+        dinoGame.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            jump();
+        });
 
         // --- Interactive Desktop ---
         const addressBar = document.getElementById('address-bar');
